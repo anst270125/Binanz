@@ -14,9 +14,9 @@ MainWindow::MainWindow(QWidget *parent)
     , chartView(this)
 {
     ui->setupUi(this);
-    setWindowTitle("Binanz");
+    setWindowTitle("binanz");
     chartView.setRenderHint(QPainter::Antialiasing);
-    chartView.resize(1500,600);
+    chartView.resize(1800,600);
     chartView.show();
 
     connect(nam,&QNetworkAccessManager::finished,this,&MainWindow::step2_pairDataReceived);
@@ -128,7 +128,7 @@ void MainWindow::step3_updateChart(double referenceTs)
         if(!shownPairs[pairName])
             continue;
 
-        QLineSeries* series = new QLineSeries;
+        QSplineSeries* series = new QSplineSeries;
         series->setName(pairName);
 
         for(double ts : pairsData[pairName].keys())
