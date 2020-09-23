@@ -44,7 +44,7 @@ void MainWindow::step1_getPairData(QString pair, double endTime)
         url += "&endTime=" + QString::number(static_cast<qint64>(endTime));
 
     nam->get(QNetworkRequest(url));
-    ui->radioButton->setEnabled(false);
+    ui->radioButton->setEnabled(false); // disable UI stuff until data downloaded
     ui->radioButton_2->setEnabled(false);
     ui->addPairButton->setEnabled(false);
     ui->pairEdit->clearFocus();
@@ -66,15 +66,23 @@ void MainWindow::step2_pairDataReceived(QNetworkReply* reply)
     QRegularExpression chunksRegex("\\[(.*?)\\]");
     QRegularExpressionMatchIterator it = chunksRegex.globalMatch(data);
 
-    if(!it.hasNext())
+    if(!it.hasNext()){ // bad pair, reenable UI and return
+        ui->radioButton->setEnabled(true);
+        ui->radioButton_2->setEnabled(true);
+        ui->addPairButton->setEnabled(true);
         return;
+    }
 
     while (it.hasNext()) {
         QRegularExpressionMatch match = it.next();
         QStringList fields = match.captured(1).split(",");
 
-        if(fields.size()<11)
+        if(fields.size()<11){ // bad pair, reenable UI and return
+            ui->radioButton->setEnabled(true);
+            ui->radioButton_2->setEnabled(true);
+            ui->addPairButton->setEnabled(true);
             return;
+        }
 
         priceList[fields[0].toDouble()] =  fields[1].toDouble();
     }
@@ -82,13 +90,13 @@ void MainWindow::step2_pairDataReceived(QNetworkReply* reply)
     if (pairsData.empty()) //prevent interval change after first downloaded pair
         ui->comboBox->setEnabled(false);
 
-    if (pairsData.contains(pairName)){
+    if (pairsData.contains(pairName)){ //if pair chunks 2-n
         for(double ts : priceList.keys())
             pairsData[pairName][ts] = priceList[ts];
         step3_updateChart();
     }
 
-    else{
+    else{ // if first chunk of pair data
         pairsData[pairName] = priceList;
         QListWidgetItem* item = new QListWidgetItem(pairName);
         item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
@@ -96,10 +104,10 @@ void MainWindow::step2_pairDataReceived(QNetworkReply* reply)
         item->setCheckState(Qt::Checked); // ---> updateChart()
     }
 
-    if (priceList.size() >= limit.toInt())
+    if (priceList.size() >= limit.toInt()) // if there should still be data, download it
         step1_getPairData(pairName,(priceList.constBegin().key()));
 
-    else{
+    else{  // if not, reenable UI
         ui->radioButton->setEnabled(true);
         ui->radioButton_2->setEnabled(true);
         ui->addPairButton->setEnabled(true);
@@ -140,7 +148,7 @@ void MainWindow::step3_updateChart(double referenceTs)
     }
 
 
-    QPair<double,double> tsRange = getTsPlotRange();
+    QPair<double,double> tsRange = getTsPlotRange(); // min(firstTS(data)) , max(lastTS(data))
     axisX->setRange(QDateTime::fromMSecsSinceEpoch(tsRange.first),
                     QDateTime::fromMSecsSinceEpoch(tsRange.second));
 
@@ -179,38 +187,30 @@ void MainWindow::step3_updateChart(double referenceTs)
 
 }
 
-void MainWindow::adjustCalendarRange()
+void MainWindow::adjustCalendarRange() // adjust selectable dates in calendar, based on max(firstTS(data))
 {
-    double min = 0, max = QDateTime::currentDateTime().toMSecsSinceEpoch();
-    for (QString pairName : pairsData.keys()){
-        if(!shownPairs[pairName])
-            continue;
-
-        if(pairsData[pairName].firstKey() > min)
-            min = pairsData[pairName].firstKey();
-        if(pairsData[pairName].lastKey() < max)
-            max = pairsData[pairName].lastKey();
-
-    }
-    ui->calendarWidget->setDateRange(QDateTime::fromMSecsSinceEpoch(min).date(),
-                                     QDateTime::fromMSecsSinceEpoch(max).date());
+    QPair<double,double> tsRange = getTsPlotRange();
+    ui->calendarWidget->setDateRange(QDateTime::fromMSecsSinceEpoch(tsRange.first).date(),
+                                     QDateTime::fromMSecsSinceEpoch(tsRange.second).date());
 }
 
-void MainWindow::doPairPercentage(QString pairName, double referenceValue)
+void MainWindow::doPairPercentage(QString pairName, double referenceValue) // percentage change strategy
 {
     for(double ts : origPairsData[pairName].keys()){
         pairsData[pairName][ts] = (origPairsData[pairName][ts]*100)/referenceValue - 100;
     }
 }
 
-template<typename inttype>
+template<typename inttype> // show last 1d, 7d, 1m, 3m, 1y
 void MainWindow::showTsRange(QDateTime (QDateTime::*func)(inttype) const, inttype tsRange)
 {
     QDateTime timeNow = QDateTime::currentDateTime();
     QDateTime startTime = (timeNow.*func)(tsRange);
+    bool perctgMode = !ui->radioButton->isChecked();
+
     double firstTSwithData = getTsPlotRange().first;
 
-    if(firstTSwithData == 1e+16)
+    if(firstTSwithData == 1e+16) // dont crash on history buttons when  no data
         return;
 
     if(startTime.toMSecsSinceEpoch() < firstTSwithData)
@@ -218,8 +218,7 @@ void MainWindow::showTsRange(QDateTime (QDateTime::*func)(inttype) const, inttyp
 
     static_cast<QDateTimeAxis*>(chartView.chart()->axes(Qt::Horizontal)[0])->setRange(startTime,timeNow);
 
-    bool perctgMode = !ui->radioButton->isChecked();
-    if(perctgMode){
+    if(perctgMode){ // in perc mode, also sync data's 0% point
         ui->calendarWidget->setSelectedDate(startTime.date());
         on_calendarWidget_activated(startTime.date()); //---> fitYAxis();
     }
@@ -230,22 +229,33 @@ void MainWindow::showTsRange(QDateTime (QDateTime::*func)(inttype) const, inttyp
 
 QPair<double, double> MainWindow::getTsPlotRange()
 {
-    double tsMin = 10e15, tsMax = 0;
+    bool perctgMode = !ui->radioButton->isChecked();
+
+    double tsMin = perctgMode ? 0 : 1e+16;
+    double tsMax = perctgMode ? 1e+16 : 0;
 
     for(QString pairName : pairsData.keys()){
         if(!shownPairs[pairName])
             continue;
 
-        if(pairsData[pairName].firstKey() < tsMin)
-            tsMin = pairsData[pairName].firstKey();
-        if(pairsData[pairName].lastKey() > tsMax)
-            tsMax = pairsData[pairName].lastKey();
+        if(perctgMode){ // if percMode return max(firstTS(data)), min(lastTS(data)), else min(firstTS(data)), max(lastTS(data))
+            if(pairsData[pairName].firstKey() > tsMin)
+                tsMin = pairsData[pairName].firstKey();
+            if(pairsData[pairName].lastKey() < tsMax)
+                tsMax = pairsData[pairName].lastKey();
+        }
+        else{
+            if(pairsData[pairName].firstKey() < tsMin)
+                tsMin = pairsData[pairName].firstKey();
+            if(pairsData[pairName].lastKey() > tsMax)
+                tsMax = pairsData[pairName].lastKey();
+        }
 
     }
     return {tsMin,tsMax};
 }
 
-QPair<double, double> MainWindow::getPricePlotRange() // for visible region
+QPair<double, double> MainWindow::getPricePlotRange() // get price/% range in visible TS range
 {
     double priceMin = 10e8, priceMax = 0;
 
@@ -262,7 +272,7 @@ QPair<double, double> MainWindow::getPricePlotRange() // for visible region
         auto startIt = pairsData[pairName].lowerBound(minVisibleTs);
         auto endIt = pairsData[pairName].lowerBound(maxVisibleTs);
 
-        if(startIt == endIt)//pair data beyond current view
+        if(startIt == endIt)//pair data not in visible ts range, ignore pair
             continue;
 
         if(endIt == pairsData[pairName].end())
@@ -282,7 +292,7 @@ QPair<double, double> MainWindow::getPricePlotRange() // for visible region
     return {priceMin,priceMax};
 }
 
-void MainWindow::fitYAxis(QValueAxis* axisY)
+void MainWindow::fitYAxis(QValueAxis* axisY) // vertical zoom on y axis to fit visible range
 {
     if(axisY == nullptr)
         axisY = static_cast<QValueAxis*>(chartView.chart()->axes(Qt::Vertical)[0]);
@@ -291,7 +301,7 @@ void MainWindow::fitYAxis(QValueAxis* axisY)
     QPair<double,double> priceRange = getPricePlotRange();
 
 
-    if(perctgMode){
+    if(perctgMode){ // in perc mode: 1%,5%,10%,20%,50%,100% ticks
         axisY->setLabelFormat("%i%");
         axisY->setTickType(QValueAxis::TickType::TicksDynamic);
         axisY->setTickAnchor(0);
@@ -319,15 +329,15 @@ void MainWindow::fitYAxis(QValueAxis* axisY)
 
     else{
         axisY->setTickCount(10);
-        int nrOf0s = log10(priceRange.second);
-        axisY->setLabelFormat("%."+QString::number(4-nrOf0s)+"f");
-        axisY->setRange(0,priceRange.second+priceRange.second*0.05);
+        int nrOfDigits = log10(priceRange.second)+1; // total number of digits is 5, so label like : 12351, 1400.4, 123.25, 13.123 ...
+        axisY->setLabelFormat("%."+QString::number(5-nrOfDigits)+"f");
+        axisY->setRange(0,priceRange.second+priceRange.second*0.05); // yAxisMax + 5% padding above
     }
 }
 
 
 
-bool MainWindow::eventFilter(QObject *watched, QEvent *event)
+bool MainWindow::eventFilter(QObject *watched, QEvent *event) // no idea
 {
     return QMainWindow::eventFilter(watched, event);
 }
@@ -363,31 +373,32 @@ void MainWindow::on_pairsList_itemChanged(QListWidgetItem *item)
 void MainWindow::on_radioButton_toggled(bool checked)
 {
     ui->addPairButton->setEnabled(checked);
-    if(checked){
+    if(checked){ // normal mode
         ui->calendarWidget->setEnabled(false);
-        pairsData = origPairsData;
+        pairsData = origPairsData; // restore original data
         step3_updateChart();
     }
-    else{
+    else{ // perc mode
+        adjustCalendarRange();
         ui->calendarWidget->setEnabled(true);
-        origPairsData = pairsData;
-        on_pushButton1m_clicked();
+        origPairsData = pairsData; // backup original data
+        on_pushButton1m_clicked(); // 1m history default view in perc mode
     }
 }
 
-void MainWindow::on_calendarWidget_activated(const QDate &date)
+void MainWindow::on_calendarWidget_activated(const QDate &date) // on date clicked
 {
     double ts = QDateTime(date).toMSecsSinceEpoch();
 
     for(QString pairName: pairsData.keys()){
-        double referenceValue = origPairsData[pairName].lowerBound(ts).value();
+        double referenceValue = origPairsData[pairName].lowerBound(ts).value(); // reference value is first after date timestamp
         doPairPercentage(pairName,referenceValue);
     }
 
     step3_updateChart(ts);
 
     bool perctgMode = !ui->radioButton->isChecked();
-    if(perctgMode){
+    if(perctgMode){ // in perc mode(??) zoom both axes accordingly
         static_cast<QDateTimeAxis*>(chartView.chart()->axes(Qt::Horizontal)[0])->setRange(QDateTime::fromMSecsSinceEpoch(ts),QDateTime::currentDateTime());
         fitYAxis();
     }
