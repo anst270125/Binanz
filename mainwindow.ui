@@ -18,6 +18,9 @@
     <property name="spacing">
      <number>10</number>
     </property>
+    <property name="bottomMargin">
+     <number>0</number>
+    </property>
     <item>
      <layout class="QGridLayout" name="gridLayout">
       <item row="2" column="0">
@@ -345,6 +348,14 @@
      </layout>
     </item>
    </layout>
+  </widget>
+  <widget class="QStatusBar" name="statusBar">
+   <property name="maximumSize">
+    <size>
+     <width>16777215</width>
+     <height>20</height>
+    </size>
+   </property>
   </widget>
  </widget>
  <resources/>

@@ -20,7 +20,7 @@ MainWindow::MainWindow(QWidget *parent)
     chartView.show();
 
     connect(nam,&QNetworkAccessManager::finished,this,&MainWindow::step2_pairDataReceived);
-
+    readWatchList();
 }
 
 MainWindow::~MainWindow()
@@ -103,6 +103,8 @@ void MainWindow::step2_pairDataReceived(QNetworkReply* reply)
         ui->pairsList->addItem(item);
         item->setCheckState(Qt::Checked); // ---> updateChart()
     }
+
+    QApplication::processEvents();
 
     if (priceList.size() >= limit.toInt()) // if there should still be data, download it
         step1_getPairData(pairName,(priceList.constBegin().key()));
@@ -431,4 +433,21 @@ void MainWindow::on_pushButton7d_clicked()
 void MainWindow::on_pushButton1d_clicked()
 {
     showTsRange(&QDateTime::addDays,qint64(-1));
+}
+
+void MainWindow::readWatchList()
+{
+    QFile file("watchlist.txt");
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+            return;
+
+    statusBar()->showMessage("Importing watchlist...",1500);
+    QTextStream in(&file);
+    QStringList pairs;
+    while (!in.atEnd())
+        pairs<<in.readLine();
+
+    pairs.removeDuplicates();
+    for(QString pair : pairs)
+        step1_getPairData(pair);
 }

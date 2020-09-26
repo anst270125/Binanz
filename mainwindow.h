@@ -44,6 +44,7 @@ private:
     QMap<QString,QMap<double,double>> pairsData;
     QMap<QString,QMap<double,double>> origPairsData;
 
+    void readWatchList();
     void step1_getPairData(QString pair,double endTime=0);
     void step2_pairDataReceived(QNetworkReply* reply);
     void step3_updateChart(double ts = 0);
