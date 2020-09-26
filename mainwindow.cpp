@@ -306,9 +306,12 @@ void MainWindow::fitYAxis(QValueAxis* axisY) // vertical zoom on y axis to fit v
         axisY->setTickType(QValueAxis::TickType::TicksDynamic);
         axisY->setTickAnchor(0);
 
-        int tickInterval = priceRange.second-priceRange.first;
+        qreal tickInterval = priceRange.second-priceRange.first;
 
-        if(tickInterval<20)
+        axisY->setLabelFormat((tickInterval <= 10) ? "%.1f%" : "%i%"); // for % range < 10, add one digit to axis label
+        if(tickInterval<10)
+            tickInterval = 0.5;
+        else if(tickInterval<20)
             tickInterval = 1;
         else if(tickInterval<100)
             tickInterval = 5;
@@ -324,7 +327,7 @@ void MainWindow::fitYAxis(QValueAxis* axisY) // vertical zoom on y axis to fit v
             tickInterval = 100;
 
         axisY->setTickInterval(tickInterval);
-        axisY->setRange(priceRange.first /*+ 0.05 * priceRange.first*/, priceRange.second /*+ 0.05 * priceRange.second*/);
+        axisY->setRange(priceRange.first - abs(0.05 * priceRange.first), priceRange.second + abs(0.05 * priceRange.second));
     }
 
     else{
