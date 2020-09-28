@@ -7,6 +7,20 @@
 
 QTextStream out(stdout);
 
+QMap<QString,double> intervalMSecs  {{"1m",60000},
+                                     {"3m",60000*3},
+                                     {"5m",60000*5},
+                                     {"15m",60000*15},
+                                     {"30m",60000*30},
+                                     {"1h",3.6e+6},
+                                     {"2h",3.6e+6*2},
+                                     {"6h",3.6e+6*6},
+                                     {"12h",3.6e+6*12},
+                                     {"1d",8.64e+7},
+                                     {"3d",8.64e+7*3}};
+
+
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -18,6 +32,11 @@ MainWindow::MainWindow(QWidget *parent)
     chartView.setRenderHint(QPainter::Antialiasing);
     chartView.resize(1800,600);
     chartView.show();
+
+
+    ui->tableWidget->setColumnWidth(0, 100);
+    for(int i = 1; i<ui->tableWidget->columnCount(); ++i)
+        ui->tableWidget->setColumnWidth(i, 60);
 
     connect(nam,&QNetworkAccessManager::finished,this,&MainWindow::step2_pairDataReceived);
     readWatchList();
@@ -98,10 +117,20 @@ void MainWindow::step2_pairDataReceived(QNetworkReply* reply)
 
     else{ // if first chunk of pair data
         pairsData[pairName] = priceList;
-        QListWidgetItem* item = new QListWidgetItem(pairName);
-        item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
-        ui->pairsList->addItem(item);
+
+        QTableWidgetItem* item = new QTableWidgetItem(pairName);
+        item->setTextAlignment(Qt::AlignCenter);
+        item->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled);
+
+        ui->tableWidget->insertRow(ui->tableWidget->rowCount() );
+        ui->tableWidget->setItem(ui->tableWidget->rowCount()-1,0, item);
         item->setCheckState(Qt::Checked); // ---> updateChart()
+
+        for(int i = 1; i< ui->tableWidget->columnCount(); ++i){
+            QTableWidgetItem *item = new QTableWidgetItem("-");
+            item->setTextAlignment(Qt::AlignCenter);
+            ui->tableWidget->setItem(ui->tableWidget->rowCount()-1,i, item);
+        }
     }
 
     QApplication::processEvents();
@@ -109,10 +138,11 @@ void MainWindow::step2_pairDataReceived(QNetworkReply* reply)
     if (priceList.size() >= limit.toInt()) // if there should still be data, download it
         step1_getPairData(pairName,(priceList.constBegin().key()));
 
-    else{  // if not, reenable UI
+    else{  // if not, reenable UI and fill table
         ui->radioButton->setEnabled(true);
         ui->radioButton_2->setEnabled(true);
         ui->addPairButton->setEnabled(true);
+        doPriceHistory(pairName);
     }
 
     adjustCalendarRange();
@@ -164,28 +194,58 @@ void MainWindow::step3_updateChart(double referenceTs)
     //chart->setAnimationOptions(QChart::SeriesAnimations);  // laggy for some reason
 
 
-//    if(referenceTs != 0){ //vertical lines on reference timestamps and 0%
-//        QLineSeries* referenceLineV = new QLineSeries;
-//        QLineSeries* referenceLineH = new QLineSeries;
-//        QPen pen(QColor(150,200,255));
-//        pen.setWidth(1);
-//        referenceLineH->setPen(pen);
-//        referenceLineV->setPen(pen);
+    //    if(referenceTs != 0){ //vertical lines on reference timestamps and 0%
+    //        QLineSeries* referenceLineV = new QLineSeries;
+    //        QLineSeries* referenceLineH = new QLineSeries;
+    //        QPen pen(QColor(150,200,255));
+    //        pen.setWidth(1);
+    //        referenceLineH->setPen(pen);
+    //        referenceLineV->setPen(pen);
 
 
-//        referenceLineV->append(referenceTs,axisY->max());
-//        referenceLineV->append(referenceTs,axisY->min());
+    //        referenceLineV->append(referenceTs,axisY->max());
+    //        referenceLineV->append(referenceTs,axisY->min());
 
-//        referenceLineH->append(tsRange.first,0);
-//        referenceLineH->append(tsRange.second,0);
+    //        referenceLineH->append(tsRange.first,0);
+    //        referenceLineH->append(tsRange.second,0);
 
-//        chart->addSeries(referenceLineV);
-//        referenceLineV->attachAxis(axisX);
-//        referenceLineV->attachAxis(axisY);
-//        chart->addSeries(referenceLineH);
-//        referenceLineH->attachAxis(axisX);
-//        referenceLineH->attachAxis(axisY);
-//    }
+    //        chart->addSeries(referenceLineV);
+    //        referenceLineV->attachAxis(axisX);
+    //        referenceLineV->attachAxis(axisY);
+    //        chart->addSeries(referenceLineH);
+    //        referenceLineH->attachAxis(axisX);
+    //        referenceLineH->attachAxis(axisY);
+    //    }
+
+}
+
+void MainWindow::doPriceHistory(QString pairName)
+{
+    int row = ui->tableWidget->findItems(pairName,Qt::MatchExactly)[0]->row(); // find which row in table is pair
+    double lastPrice = pairsData[pairName].last();
+
+    double interval = intervalMSecs[ui->comboBox->currentText()];
+
+    QList<double> historyTss;
+    historyTss << QDateTime::currentDateTime().addSecs(-3600 * 24).toMSecsSinceEpoch(); //24h
+    historyTss << QDateTime::currentDateTime().addDays(-7).toMSecsSinceEpoch();         //1w
+    historyTss << QDateTime::currentDateTime().addMonths(-1).toMSecsSinceEpoch();       //1m
+    historyTss << QDateTime::currentDateTime().addMonths(-3).toMSecsSinceEpoch();       //3m
+    historyTss << QDateTime::currentDateTime().addYears(-1).toMSecsSinceEpoch();        //1y
+
+    for(int i = 0; i<historyTss.size();++i){ // calculate perc inc/dec,  write in table, and color accordingly
+        auto it = pairsData[pairName].lowerBound(historyTss[i]);
+        if(it != pairsData[pairName].end() && it.key() - historyTss[i] <= interval){ // if no data in range (ts, ts+interval), ignore
+            double percChange = ((lastPrice - it.value()) / abs(it.value())) * 100;
+            ui->tableWidget->item(row,i+1)->setText(QString::number(percChange,'f',1)+"%");
+
+            if(percChange>0)
+                ui->tableWidget->item(row,i+1)->setForeground(QBrush(QColor(80, 175, 0)));
+            else
+                ui->tableWidget->item(row,i+1)->setForeground(QBrush(QColor(225, 80, 60)));
+        }
+    }
+
 
 }
 
@@ -198,9 +258,9 @@ void MainWindow::adjustCalendarRange() // adjust selectable dates in calendar, b
 
 void MainWindow::doPairPercentage(QString pairName, double referenceValue) // percentage change strategy
 {
-    for(double ts : origPairsData[pairName].keys()){
-        pairsData[pairName][ts] = (origPairsData[pairName][ts]*100)/referenceValue - 100;
-    }
+    for(double ts : origPairsData[pairName].keys())
+        pairsData[pairName][ts] = ((origPairsData[pairName][ts] - referenceValue) / abs(referenceValue)) * 100;
+
 }
 
 template<typename inttype> // show last 1d, 7d, 1m, 3m, 1y
@@ -368,12 +428,6 @@ void MainWindow::on_addPairButton_clicked()
     step1_getPairData(pairName);
 }
 
-void MainWindow::on_pairsList_itemChanged(QListWidgetItem *item)
-{
-    shownPairs[item->text()] = (item->checkState() == Qt::Checked);
-    step3_updateChart();
-    adjustCalendarRange();
-}
 
 void MainWindow::on_radioButton_toggled(bool checked)
 {
@@ -439,7 +493,7 @@ void MainWindow::readWatchList()
 {
     QFile file("watchlist.txt");
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
-            return;
+        return;
 
     statusBar()->showMessage("Importing watchlist...",1500);
     QTextStream in(&file);
@@ -450,4 +504,11 @@ void MainWindow::readWatchList()
     pairs.removeDuplicates();
     for(QString pair : pairs)
         step1_getPairData(pair);
+}
+
+void MainWindow::on_tableWidget_itemChanged(QTableWidgetItem *item)
+{
+    shownPairs[item->text()] = (item->checkState() == Qt::Checked);
+    step3_updateChart();
+    adjustCalendarRange();
 }

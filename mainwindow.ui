@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>564</width>
-    <height>245</height>
+    <width>721</width>
+    <height>248</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -136,7 +136,10 @@
          <enum>Qt::LeftToRight</enum>
         </property>
         <property name="currentIndex">
-         <number>10</number>
+         <number>7</number>
+        </property>
+        <property name="maxVisibleItems">
+         <number>11</number>
         </property>
         <item>
          <property name="text">
@@ -175,17 +178,7 @@
         </item>
         <item>
          <property name="text">
-          <string>4h</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
           <string>6h</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>8h</string>
          </property>
         </item>
         <item>
@@ -203,22 +196,91 @@
           <string>3d</string>
          </property>
         </item>
-        <item>
-         <property name="text">
-          <string>1w</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>1M</string>
-         </property>
-        </item>
        </widget>
       </item>
      </layout>
     </item>
     <item>
-     <widget class="QListWidget" name="pairsList"/>
+     <widget class="QTableWidget" name="tableWidget">
+      <property name="minimumSize">
+       <size>
+        <width>400</width>
+        <height>0</height>
+       </size>
+      </property>
+      <property name="maximumSize">
+       <size>
+        <width>400</width>
+        <height>16777215</height>
+       </size>
+      </property>
+      <property name="focusPolicy">
+       <enum>Qt::NoFocus</enum>
+      </property>
+      <property name="contextMenuPolicy">
+       <enum>Qt::NoContextMenu</enum>
+      </property>
+      <property name="horizontalScrollBarPolicy">
+       <enum>Qt::ScrollBarAlwaysOff</enum>
+      </property>
+      <property name="editTriggers">
+       <set>QAbstractItemView::NoEditTriggers</set>
+      </property>
+      <property name="selectionMode">
+       <enum>QAbstractItemView::NoSelection</enum>
+      </property>
+      <property name="selectionBehavior">
+       <enum>QAbstractItemView::SelectRows</enum>
+      </property>
+      <property name="showGrid">
+       <bool>true</bool>
+      </property>
+      <property name="gridStyle">
+       <enum>Qt::SolidLine</enum>
+      </property>
+      <attribute name="horizontalHeaderCascadingSectionResizes">
+       <bool>true</bool>
+      </attribute>
+      <attribute name="horizontalHeaderMinimumSectionSize">
+       <number>30</number>
+      </attribute>
+      <attribute name="horizontalHeaderDefaultSectionSize">
+       <number>60</number>
+      </attribute>
+      <attribute name="verticalHeaderVisible">
+       <bool>false</bool>
+      </attribute>
+      <column>
+       <property name="text">
+        <string>Pair</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>24h</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>1w</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>1m</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>3m</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>1y</string>
+       </property>
+      </column>
+     </widget>
     </item>
     <item>
      <layout class="QGridLayout" name="gridLayout_2">

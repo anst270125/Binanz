@@ -25,7 +25,7 @@ private slots:
     void on_pairCombo1_currentTextChanged(const QString &arg1);
     void on_pairCombo2_currentTextChanged(const QString &arg1);
     void on_addPairButton_clicked();
-    void on_pairsList_itemChanged(QListWidgetItem *item);
+    void on_tableWidget_itemChanged(QTableWidgetItem *item);
     void on_radioButton_toggled(bool checked);
     void on_calendarWidget_activated(const QDate &date);
 
@@ -34,6 +34,7 @@ private slots:
     void on_pushButton1m_clicked();
     void on_pushButton7d_clicked();
     void on_pushButton1d_clicked();
+
 
 private:
     Ui::MainWindow *ui;
@@ -48,6 +49,7 @@ private:
     void step1_getPairData(QString pair,double endTime=0);
     void step2_pairDataReceived(QNetworkReply* reply);
     void step3_updateChart(double ts = 0);
+    void doPriceHistory(QString pairName);
     void adjustCalendarRange();
     void doPairPercentage(QString pairName, double referenceValue);
 
