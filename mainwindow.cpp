@@ -6,6 +6,9 @@
 #include <algorithm>
 
 QTextStream out(stdout);
+int ident=-1;
+#define tstart QElapsedTimer timer; timer.start();++ident;
+#define tend(X) out<<QString(ident,'-')<<X<<" "<<timer.elapsed()<<"\n"<<(ident == 0 ? "\n" : "");out.flush();--ident;
 
 QMap<QString,double> intervalMSecs  {{"1m",60000},
                                      {"3m",60000*3},
@@ -27,6 +30,7 @@ MainWindow::MainWindow(QWidget *parent)
     , nam(new QNetworkAccessManager(this))
     , chartView(this)
 {
+    nam->get(QNetworkRequest(QString())); //first get slow solver
     ui->setupUi(this);
     setWindowTitle("binanz");
     chartView.setRenderHint(QPainter::Antialiasing);
@@ -40,6 +44,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(nam,&QNetworkAccessManager::finished,this,&MainWindow::step2_pairDataReceived);
     readWatchList();
+    QDir().mkdir("data");
 }
 
 MainWindow::~MainWindow()
@@ -49,39 +54,35 @@ MainWindow::~MainWindow()
 }
 
 
-void MainWindow::step1_getPairData(QString pair, double endTime)
+void MainWindow::step1_getPairData(QString pair)
 {
-    QString interval = ui->comboBox->currentText();
-    QString limit = "1000";
-    QString url = "https://api.binance.com/api/v3/klines?";
-
-    url += "symbol=" + pair;
-    url += "&interval=" + interval;
-    url += "&limit=" + limit;
-
-    if(endTime != 0)
-        url += "&endTime=" + QString::number(static_cast<qint64>(endTime));
-
-    nam->get(QNetworkRequest(url));
-    ui->radioButton->setEnabled(false); // disable UI stuff until data downloaded
-    ui->radioButton_2->setEnabled(false);
-    ui->addPairButton->setEnabled(false);
-    ui->pairEdit->clearFocus();
-
+    if(QFile::exists("data/"+pair+".txt")){
+        loadPairData(pair);
+    }
+    downloadPairData(pair);
 }
 
 void MainWindow::step2_pairDataReceived(QNetworkReply* reply)
 {
-    QString url = reply->url().toString();
 
+    QString url = reply->url().toString();
+    if(url.isEmpty()) // first slow get solver handler
+        return;
+
+    tstart
     QString pairName = QRegularExpression("symbol=(.*?)&").match(url).captured(1);
-    QString limit = QRegularExpression("limit=(.*?)(&|$)").match(url).captured(1);
+    int limit = QRegularExpression("limit=(.*?)(&|$)").match(url).captured(1).toInt();
 
     QString data = QString(reply->readAll());
     data.remove(0,1);
     data.remove("\"");
 
-    QMap<double,double> priceList;
+    int items = 0;
+    double firstTs;
+    double newDataStartTs = 0;
+    bool firstChunk = !pairsData.contains(pairName);
+    bool itAtExistingData = false;
+
     QRegularExpression chunksRegex("\\[(.*?)\\]");
     QRegularExpressionMatchIterator it = chunksRegex.globalMatch(data);
 
@@ -92,7 +93,7 @@ void MainWindow::step2_pairDataReceived(QNetworkReply* reply)
         return;
     }
 
-    while (it.hasNext()) {
+    while (it.hasNext()) {        
         QRegularExpressionMatch match = it.next();
         QStringList fields = match.captured(1).split(",");
 
@@ -103,55 +104,55 @@ void MainWindow::step2_pairDataReceived(QNetworkReply* reply)
             return;
         }
 
-        priceList[fields[0].toDouble()] =  fields[1].toDouble();
-    }
+        double ts = fields[0].toDouble();
+        double value = fields[1].toDouble();
 
-    if (pairsData.empty()) //prevent interval change after first downloaded pair
-        ui->comboBox->setEnabled(false);
+        if(items == 0)
+            firstTs = ts;
 
-    if (pairsData.contains(pairName)){ //if pair chunks 2-n
-        for(double ts : priceList.keys())
-            pairsData[pairName][ts] = priceList[ts];
-        step3_updateChart();
-    }
-
-    else{ // if first chunk of pair data
-        pairsData[pairName] = priceList;
-
-        QTableWidgetItem* item = new QTableWidgetItem(pairName);
-        item->setTextAlignment(Qt::AlignCenter);
-        item->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled);
-
-        ui->tableWidget->insertRow(ui->tableWidget->rowCount() );
-        ui->tableWidget->setItem(ui->tableWidget->rowCount()-1,0, item);
-        item->setCheckState(Qt::Checked); // ---> updateChart()
-
-        for(int i = 1; i< ui->tableWidget->columnCount(); ++i){
-            QTableWidgetItem *item = new QTableWidgetItem("-");
-            item->setTextAlignment(Qt::AlignCenter);
-            ui->tableWidget->setItem(ui->tableWidget->rowCount()-1,i, item);
+        if(pairsData[pairName].contains(ts)){ // if data already exists, ignore
+            itAtExistingData = true;
+            continue;
         }
+        if(itAtExistingData && !pairsData[pairName].contains(ts)){ // at first new data (after already existing/duplicates)
+            newDataStartTs = ts;                                   // save first new timestamp and prevent overwrite
+            itAtExistingData = false;
+        }
+
+        pairsData[pairName][ts] =  value;
+        ++items;
     }
 
-    QApplication::processEvents();
 
-    if (priceList.size() >= limit.toInt()) // if there should still be data, download it
-        step1_getPairData(pairName,(priceList.constBegin().key()));
+    if (!firstChunk) //if pair chunks 2->n
+        step3_updateChart();
 
-    else{  // if not, reenable UI and fill table
+    else // if first chunk of pair data
+       addTableRow(pairName); // ---> step3_updateChart
+
+
+    if((items < limit) || newDataStartTs != 0){  // if no data left to download
         ui->radioButton->setEnabled(true);
         ui->radioButton_2->setEnabled(true);
         ui->addPairButton->setEnabled(true);
+        adjustCalendarRange();
         doPriceHistory(pairName);
+
+        if(!itAtExistingData) // if only new data, or some new data
+            savePairData(pairName,newDataStartTs);
     }
 
-    adjustCalendarRange();
+   else // if there should still be data, download it
+        downloadPairData(pairName,firstTs-1);
+   tend("step2_pairDataReceived " + pairName)
+
 
 }
 
 
 void MainWindow::step3_updateChart(double referenceTs)
 {
+    tstart
     QChart* chart = new QChart;
 
     QDateTimeAxis *axisX = new QDateTimeAxis;
@@ -216,7 +217,48 @@ void MainWindow::step3_updateChart(double referenceTs)
     //        referenceLineH->attachAxis(axisX);
     //        referenceLineH->attachAxis(axisY);
     //    }
+    tend("updateChart ")
 
+}
+
+void MainWindow::downloadPairData(QString pair, double endTime)
+{
+    tstart
+    QString interval = ui->comboBox->currentText();
+    QString limit = "1000";
+    QString url = "https://api.binance.com/api/v3/klines?";
+
+    url += "symbol=" + pair;
+    url += "&interval=" + interval;
+    url += "&limit=" + limit;
+
+    if(endTime != 0)
+        url += "&endTime=" + QString::number(static_cast<qint64>(endTime));
+
+    nam->get(QNetworkRequest(url));
+    ui->radioButton->setEnabled(false); // disable UI stuff until data downloaded
+    ui->radioButton_2->setEnabled(false);
+    ui->addPairButton->setEnabled(false);
+    ui->pairEdit->clearFocus();
+    tend("downloadPairData " + pair)
+
+}
+
+void MainWindow::loadPairData(QString pairName)
+{
+    tstart
+    QFile file("data/"+pairName+".txt");
+    file.open(QFile::ReadOnly);
+
+    while(!file.atEnd()){
+        QByteArray line = file.readLine();
+        double ts = line.left(13).toDouble();
+        double val = line.mid(13).toDouble();
+        pairsData[pairName][ts] = val;
+    }
+
+    addTableRow(pairName);
+    tend("loadPairData "+pairName);
 }
 
 void MainWindow::doPriceHistory(QString pairName)
@@ -246,6 +288,48 @@ void MainWindow::doPriceHistory(QString pairName)
         }
     }
 
+
+}
+
+void MainWindow::addTableRow(QString pairName)
+{
+    tstart
+    QTableWidgetItem* item = new QTableWidgetItem(pairName);
+    item->setTextAlignment(Qt::AlignCenter);
+    item->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled);
+
+    ui->tableWidget->insertRow(ui->tableWidget->rowCount() );
+    ui->tableWidget->setItem(ui->tableWidget->rowCount()-1,0, item);
+    item->setCheckState(Qt::Checked); // ---> updateChart()
+
+    for(int i = 1; i< ui->tableWidget->columnCount(); ++i){
+        QTableWidgetItem *item = new QTableWidgetItem("-");
+        item->setTextAlignment(Qt::AlignCenter);
+        ui->tableWidget->setItem(ui->tableWidget->rowCount()-1,i, item);
+    }
+    tend("addTableRow " + pairName)
+}
+
+void MainWindow::savePairData(QString pair, double newDataStartTs)
+{
+
+    QFile file("data/"+pair+".txt");
+    if(!file.exists())
+        file.open(QIODevice::WriteOnly);
+    else
+        file.open(QIODevice::WriteOnly | QIODevice::Append);
+
+    QTextStream fileStream(&file);
+    fileStream.setRealNumberNotation(QTextStream::FixedNotation);
+
+    auto it = pairsData[pair].lowerBound(newDataStartTs); //either newDataStartTs or first element
+    while(it != pairsData[pair].end()){
+        fileStream.setRealNumberPrecision(0);
+        fileStream<<it.key()<<" ";
+        fileStream.setRealNumberPrecision(6);
+        fileStream<<it.value()<<'\n';
+        ++it;
+    }
 
 }
 
@@ -453,7 +537,6 @@ void MainWindow::on_calendarWidget_activated(const QDate &date) // on date click
         double referenceValue = origPairsData[pairName].lowerBound(ts).value(); // reference value is first after date timestamp
         doPairPercentage(pairName,referenceValue);
     }
-
     step3_updateChart(ts);
 
     bool perctgMode = !ui->radioButton->isChecked();
@@ -508,7 +591,14 @@ void MainWindow::readWatchList()
 
 void MainWindow::on_tableWidget_itemChanged(QTableWidgetItem *item)
 {
-    shownPairs[item->text()] = (item->checkState() == Qt::Checked);
+    if(item->column() != 0) // if changes in history columns we dont care
+        return;
+
+    bool cellState = item->checkState() == Qt::Checked;
+    if(!(shownPairs[item->text()] != cellState)) // if change is other than check/uncheck, return
+        return;
+
+    shownPairs[item->text()] = cellState;
     step3_updateChart();
     adjustCalendarRange();
 }

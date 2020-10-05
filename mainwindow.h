@@ -46,10 +46,14 @@ private:
     QMap<QString,QMap<double,double>> origPairsData;
 
     void readWatchList();
-    void step1_getPairData(QString pair,double endTime=0);
+    void step1_getPairData(QString pair);
     void step2_pairDataReceived(QNetworkReply* reply);
     void step3_updateChart(double ts = 0);
+    void downloadPairData(QString pair, double endTime=0);
+    void loadPairData(QString pairName);
     void doPriceHistory(QString pairName);
+    void addTableRow(QString pairName);
+    void savePairData(QString pair, double newDataStartTs);
     void adjustCalendarRange();
     void doPairPercentage(QString pairName, double referenceValue);
 
