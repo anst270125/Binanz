@@ -10,6 +10,8 @@ QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
 
+
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -48,7 +50,7 @@ private:
     void readWatchList();
     void step1_getPairData(QString pair);
     void step2_pairDataReceived(QNetworkReply* reply);
-    void step3_updateChart(double ts = 0);
+    void step3_updateChart(double ts = 0, bool doFitYAxis = true);
     void downloadPairData(QString pair, double endTime=0);
     void loadPairData(QString pairName);
     void doPriceHistory(QString pairName);

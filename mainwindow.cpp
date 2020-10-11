@@ -150,7 +150,7 @@ void MainWindow::step2_pairDataReceived(QNetworkReply* reply)
 }
 
 
-void MainWindow::step3_updateChart(double referenceTs)
+void MainWindow::step3_updateChart(double referenceTs, bool doFitYAxis)
 {
     tstart
     QChart* chart = new QChart;
@@ -181,9 +181,9 @@ void MainWindow::step3_updateChart(double referenceTs)
     }
 
 
-    QPair<double,double> tsRange = getTsPlotRange(); // min(firstTS(data)) , max(lastTS(data))
-    axisX->setRange(QDateTime::fromMSecsSinceEpoch(tsRange.first),
-                    QDateTime::fromMSecsSinceEpoch(tsRange.second));
+  //  QPair<double,double> tsRange = getTsPlotRange(); // min(firstTS(data)) , max(lastTS(data))  // can be removes i guess
+  //  axisX->setRange(QDateTime::fromMSecsSinceEpoch(tsRange.first),
+  //                  QDateTime::fromMSecsSinceEpoch(tsRange.second));
 
 
     QChart* oldChart = chartView.chart();
@@ -191,7 +191,9 @@ void MainWindow::step3_updateChart(double referenceTs)
     if(oldChart != nullptr)
         delete oldChart;
 
-    fitYAxis(axisY);
+    if(doFitYAxis)
+            fitYAxis(axisY);
+
     //chart->setAnimationOptions(QChart::SeriesAnimations);  // laggy for some reason
 
 
@@ -263,6 +265,7 @@ void MainWindow::loadPairData(QString pairName)
 
 void MainWindow::doPriceHistory(QString pairName)
 {
+    tstart
     int row = ui->tableWidget->findItems(pairName,Qt::MatchExactly)[0]->row(); // find which row in table is pair
     double lastPrice = pairsData[pairName].last();
 
@@ -288,7 +291,7 @@ void MainWindow::doPriceHistory(QString pairName)
         }
     }
 
-
+    tend("doPriceHistory "+pairName)
 }
 
 void MainWindow::addTableRow(QString pairName)
@@ -312,7 +315,7 @@ void MainWindow::addTableRow(QString pairName)
 
 void MainWindow::savePairData(QString pair, double newDataStartTs)
 {
-
+    tstart
     QFile file("data/"+pair+".txt");
     if(!file.exists())
         file.open(QIODevice::WriteOnly);
@@ -330,14 +333,17 @@ void MainWindow::savePairData(QString pair, double newDataStartTs)
         fileStream<<it.value()<<'\n';
         ++it;
     }
+    tend("savePairData "+pair)
 
 }
 
 void MainWindow::adjustCalendarRange() // adjust selectable dates in calendar, based on max(firstTS(data))
 {
+    tstart
     QPair<double,double> tsRange = getTsPlotRange();
     ui->calendarWidget->setDateRange(QDateTime::fromMSecsSinceEpoch(tsRange.first).date(),
                                      QDateTime::fromMSecsSinceEpoch(tsRange.second).date());
+    tend("adjustCalRange")
 }
 
 void MainWindow::doPairPercentage(QString pairName, double referenceValue) // percentage change strategy
@@ -350,6 +356,7 @@ void MainWindow::doPairPercentage(QString pairName, double referenceValue) // pe
 template<typename inttype> // show last 1d, 7d, 1m, 3m, 1y
 void MainWindow::showTsRange(QDateTime (QDateTime::*func)(inttype) const, inttype tsRange)
 {
+    tstart
     QDateTime timeNow = QDateTime::currentDateTime();
     QDateTime startTime = (timeNow.*func)(tsRange);
     bool perctgMode = !ui->radioButton->isChecked();
@@ -371,10 +378,12 @@ void MainWindow::showTsRange(QDateTime (QDateTime::*func)(inttype) const, inttyp
 
     else
         fitYAxis();
+    tend("showTsRange")
 }
 
 QPair<double, double> MainWindow::getTsPlotRange()
 {
+    tstart
     bool perctgMode = !ui->radioButton->isChecked();
 
     double tsMin = perctgMode ? 0 : 1e+16;
@@ -398,11 +407,13 @@ QPair<double, double> MainWindow::getTsPlotRange()
         }
 
     }
+    tend("getTsPlotRange")
     return {tsMin,tsMax};
 }
 
 QPair<double, double> MainWindow::getPricePlotRange() // get price/% range in visible TS range
 {
+    tstart
     double priceMin = 10e8, priceMax = 0;
 
     QDateTimeAxis* axisX = static_cast<QDateTimeAxis*>(chartView.chart()->axes(Qt::Horizontal)[0]);
@@ -435,11 +446,13 @@ QPair<double, double> MainWindow::getPricePlotRange() // get price/% range in vi
             ++startIt;
         }
     }
+    tend("getPricePlotRange")
     return {priceMin,priceMax};
 }
 
 void MainWindow::fitYAxis(QValueAxis* axisY) // vertical zoom on y axis to fit visible range
 {
+    tstart
     if(axisY == nullptr)
         axisY = static_cast<QValueAxis*>(chartView.chart()->axes(Qt::Vertical)[0]);
 
@@ -482,6 +495,7 @@ void MainWindow::fitYAxis(QValueAxis* axisY) // vertical zoom on y axis to fit v
         axisY->setLabelFormat("%."+QString::number(5-nrOfDigits)+"f");
         axisY->setRange(0,priceRange.second+priceRange.second*0.05); // yAxisMax + 5% padding above
     }
+    tend("fitYAxis")
 }
 
 
@@ -515,6 +529,7 @@ void MainWindow::on_addPairButton_clicked()
 
 void MainWindow::on_radioButton_toggled(bool checked)
 {
+    tstart
     ui->addPairButton->setEnabled(checked);
     if(checked){ // normal mode
         ui->calendarWidget->setEnabled(false);
@@ -527,24 +542,27 @@ void MainWindow::on_radioButton_toggled(bool checked)
         origPairsData = pairsData; // backup original data
         on_pushButton1m_clicked(); // 1m history default view in perc mode
     }
+    tend("radioButtonToggled")
 }
 
 void MainWindow::on_calendarWidget_activated(const QDate &date) // on date clicked
 {
+    tstart
     double ts = QDateTime(date).toMSecsSinceEpoch();
 
     for(QString pairName: pairsData.keys()){
         double referenceValue = origPairsData[pairName].lowerBound(ts).value(); // reference value is first after date timestamp
         doPairPercentage(pairName,referenceValue);
     }
-    step3_updateChart(ts);
+
+    step3_updateChart(ts,false); //fitYAxis after setting X range
 
     bool perctgMode = !ui->radioButton->isChecked();
     if(perctgMode){ // in perc mode(??) zoom both axes accordingly
         static_cast<QDateTimeAxis*>(chartView.chart()->axes(Qt::Horizontal)[0])->setRange(QDateTime::fromMSecsSinceEpoch(ts),QDateTime::currentDateTime());
         fitYAxis();
     }
-
+    tend("calendarDateSelected")
 }
 
 void MainWindow::on_pushButton1y_clicked()
