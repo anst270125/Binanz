@@ -7,8 +7,10 @@
 
 QTextStream out(stdout);
 int ident=-1;
-#define tstart QElapsedTimer timer; timer.start();++ident;
-#define tend(X) out<<QString(ident,'-')<<X<<" "<<timer.elapsed()<<"\n"<<(ident == 0 ? "\n" : "");out.flush();--ident;
+#define tstart QElapsedTimer timerAll,timerLap; timerAll.start();timerLap.start();++ident;
+#define tlap(X) out<<QString(ident,'~')<<X<<" "<<timerLap.elapsed()<<"\n";timerLap.restart();
+#define tslap timerLap.restart();
+#define tend(X) out<<QString(ident,'-')<<X<<" "<<timerAll.elapsed()<<"\n"<<(ident == 0 ? "\n" : "");out.flush();--ident;
 
 QMap<QString,double> intervalMSecs  {{"1m",60000},
                                      {"3m",60000*3},
@@ -93,7 +95,7 @@ void MainWindow::step2_pairDataReceived(QNetworkReply* reply)
         return;
     }
 
-    while (it.hasNext()) {        
+    while (it.hasNext()) {
         QRegularExpressionMatch match = it.next();
         QStringList fields = match.captured(1).split(",");
 
@@ -339,11 +341,9 @@ void MainWindow::savePairData(QString pair, double newDataStartTs)
 
 void MainWindow::adjustCalendarRange() // adjust selectable dates in calendar, based on max(firstTS(data))
 {
-    tstart
     QPair<double,double> tsRange = getTsPlotRange();
     ui->calendarWidget->setDateRange(QDateTime::fromMSecsSinceEpoch(tsRange.first).date(),
                                      QDateTime::fromMSecsSinceEpoch(tsRange.second).date());
-    tend("adjustCalRange")
 }
 
 void MainWindow::doPairPercentage(QString pairName, double referenceValue) // percentage change strategy
@@ -365,25 +365,23 @@ void MainWindow::showTsRange(QDateTime (QDateTime::*func)(inttype) const, inttyp
 
     if(firstTSwithData == 1e+16) // dont crash on history buttons when  no data
         return;
-
     if(startTime.toMSecsSinceEpoch() < firstTSwithData)
         startTime = QDateTime::fromMSecsSinceEpoch(firstTSwithData);
 
-    static_cast<QDateTimeAxis*>(chartView.chart()->axes(Qt::Horizontal)[0])->setRange(startTime,timeNow);
-
     if(perctgMode){ // in perc mode, also sync data's 0% point
         ui->calendarWidget->setSelectedDate(startTime.date());
-        on_calendarWidget_activated(startTime.date()); //---> fitYAxis();
+        on_calendarWidget_activated(startTime.date()); //---> fitYAxis(); , setRange();
     }
 
-    else
+    else{
+        static_cast<QDateTimeAxis*>(chartView.chart()->axes(Qt::Horizontal)[0])->setRange(startTime,timeNow);
         fitYAxis();
+    }
     tend("showTsRange")
 }
 
 QPair<double, double> MainWindow::getTsPlotRange()
 {
-    tstart
     bool perctgMode = !ui->radioButton->isChecked();
 
     double tsMin = perctgMode ? 0 : 1e+16;
@@ -407,13 +405,11 @@ QPair<double, double> MainWindow::getTsPlotRange()
         }
 
     }
-    tend("getTsPlotRange")
     return {tsMin,tsMax};
 }
 
 QPair<double, double> MainWindow::getPricePlotRange() // get price/% range in visible TS range
 {
-    tstart
     double priceMin = 10e8, priceMax = 0;
 
     QDateTimeAxis* axisX = static_cast<QDateTimeAxis*>(chartView.chart()->axes(Qt::Horizontal)[0]);
@@ -446,7 +442,6 @@ QPair<double, double> MainWindow::getPricePlotRange() // get price/% range in vi
             ++startIt;
         }
     }
-    tend("getPricePlotRange")
     return {priceMin,priceMax};
 }
 
@@ -554,15 +549,17 @@ void MainWindow::on_calendarWidget_activated(const QDate &date) // on date click
         double referenceValue = origPairsData[pairName].lowerBound(ts).value(); // reference value is first after date timestamp
         doPairPercentage(pairName,referenceValue);
     }
-
     step3_updateChart(ts,false); //fitYAxis after setting X range
 
     bool perctgMode = !ui->radioButton->isChecked();
     if(perctgMode){ // in perc mode(??) zoom both axes accordingly
+        tslap
         static_cast<QDateTimeAxis*>(chartView.chart()->axes(Qt::Horizontal)[0])->setRange(QDateTime::fromMSecsSinceEpoch(ts),QDateTime::currentDateTime());
+        tlap("date selected setrange")
+
         fitYAxis();
     }
-    tend("calendarDateSelected")
+    tend("date selected")
 }
 
 void MainWindow::on_pushButton1y_clicked()
