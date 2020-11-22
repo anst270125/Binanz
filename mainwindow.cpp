@@ -19,6 +19,7 @@ QMap<QString,double> intervalMSecs  {{"1m",60000},
                                      {"30m",60000*30},
                                      {"1h",3.6e+6},
                                      {"2h",3.6e+6*2},
+                                     {"4h",3.6e+6*4},
                                      {"6h",3.6e+6*6},
                                      {"12h",3.6e+6*12},
                                      {"1d",8.64e+7},
@@ -31,6 +32,7 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
     , nam(new QNetworkAccessManager(this))
     , chartView(this)
+    , downloading(0)
 {
     nam->get(QNetworkRequest(QString())); //first get slow solver
     ui->setupUi(this);
@@ -58,6 +60,7 @@ MainWindow::~MainWindow()
 
 void MainWindow::step1_getPairData(QString pair)
 {
+    uiEnableDisable(true);
     if(QFile::exists("data/"+pair+".txt")){
         loadPairData(pair);
     }
@@ -65,8 +68,7 @@ void MainWindow::step1_getPairData(QString pair)
 }
 
 void MainWindow::step2_pairDataReceived(QNetworkReply* reply)
-{
-
+{    
     QString url = reply->url().toString();
     if(url.isEmpty()) // first slow get solver handler
         return;
@@ -89,9 +91,7 @@ void MainWindow::step2_pairDataReceived(QNetworkReply* reply)
     QRegularExpressionMatchIterator it = chunksRegex.globalMatch(data);
 
     if(!it.hasNext()){ // bad pair, reenable UI and return
-        ui->radioButton->setEnabled(true);
-        ui->radioButton_2->setEnabled(true);
-        ui->addPairButton->setEnabled(true);
+        uiEnableDisable(false);
         return;
     }
 
@@ -100,9 +100,7 @@ void MainWindow::step2_pairDataReceived(QNetworkReply* reply)
         QStringList fields = match.captured(1).split(",");
 
         if(fields.size()<11){ // bad pair, reenable UI and return
-            ui->radioButton->setEnabled(true);
-            ui->radioButton_2->setEnabled(true);
-            ui->addPairButton->setEnabled(true);
+            uiEnableDisable(false);
             return;
         }
 
@@ -134,9 +132,7 @@ void MainWindow::step2_pairDataReceived(QNetworkReply* reply)
 
 
     if((items < limit) || newDataStartTs != 0){  // if no data left to download
-        ui->radioButton->setEnabled(true);
-        ui->radioButton_2->setEnabled(true);
-        ui->addPairButton->setEnabled(true);
+        uiEnableDisable(false);
         adjustCalendarRange();
         doPriceHistory(pairName);
 
@@ -162,7 +158,6 @@ void MainWindow::step3_updateChart(double referenceTs, bool doFitYAxis)
     axisX->setFormat("dd MMM yy");
     chart->addAxis(axisX, Qt::AlignBottom);
 
-
     QValueAxis *axisY = new QValueAxis;
     chart->addAxis(axisY, Qt::AlignLeft);
 
@@ -173,6 +168,7 @@ void MainWindow::step3_updateChart(double referenceTs, bool doFitYAxis)
 
         QSplineSeries* series = new QSplineSeries;
         series->setName(pairName);
+        series->setUseOpenGL(true);
 
         for(double ts : pairsData[pairName].keys())
             series->append(ts, pairsData[pairName][ts]);
@@ -181,7 +177,7 @@ void MainWindow::step3_updateChart(double referenceTs, bool doFitYAxis)
         series->attachAxis(axisX);
         series->attachAxis(axisY);
     }
-
+    tslap
 
   //  QPair<double,double> tsRange = getTsPlotRange(); // min(firstTS(data)) , max(lastTS(data))  // can be removes i guess
   //  axisX->setRange(QDateTime::fromMSecsSinceEpoch(tsRange.first),
@@ -190,6 +186,7 @@ void MainWindow::step3_updateChart(double referenceTs, bool doFitYAxis)
 
     QChart* oldChart = chartView.chart();
     chartView.setChart(chart);
+    tlap("setchart")
     if(oldChart != nullptr)
         delete oldChart;
 
@@ -227,8 +224,7 @@ void MainWindow::step3_updateChart(double referenceTs, bool doFitYAxis)
 
 void MainWindow::downloadPairData(QString pair, double endTime)
 {
-    tstart
-    QString interval = ui->comboBox->currentText();
+    QString interval = "4h";
     QString limit = "1000";
     QString url = "https://api.binance.com/api/v3/klines?";
 
@@ -239,13 +235,8 @@ void MainWindow::downloadPairData(QString pair, double endTime)
     if(endTime != 0)
         url += "&endTime=" + QString::number(static_cast<qint64>(endTime));
 
-    nam->get(QNetworkRequest(url));
-    ui->radioButton->setEnabled(false); // disable UI stuff until data downloaded
-    ui->radioButton_2->setEnabled(false);
-    ui->addPairButton->setEnabled(false);
+    nam->get(QNetworkRequest(url));  
     ui->pairEdit->clearFocus();
-    tend("downloadPairData " + pair)
-
 }
 
 void MainWindow::loadPairData(QString pairName)
@@ -271,7 +262,7 @@ void MainWindow::doPriceHistory(QString pairName)
     int row = ui->tableWidget->findItems(pairName,Qt::MatchExactly)[0]->row(); // find which row in table is pair
     double lastPrice = pairsData[pairName].last();
 
-    double interval = intervalMSecs[ui->comboBox->currentText()];
+    double interval = intervalMSecs["4h"];
 
     QList<double> historyTss;
     historyTss << QDateTime::currentDateTime().addSecs(-3600 * 24).toMSecsSinceEpoch(); //24h
@@ -353,10 +344,29 @@ void MainWindow::doPairPercentage(QString pairName, double referenceValue) // pe
 
 }
 
+void MainWindow::uiEnableDisable(bool disable)
+{
+    if(disable){
+        ++downloading;
+        if(downloading == 1){
+            ui->radioButton->setEnabled(false); // disable UI stuff until data downloaded
+            ui->radioButton_2->setEnabled(false);
+            ui->addPairButton->setEnabled(false);
+        }
+    }
+    else{
+        --downloading;
+        if(downloading == 0){
+            ui->radioButton->setEnabled(true); // disable UI stuff until data downloaded
+            ui->radioButton_2->setEnabled(true);
+            ui->addPairButton->setEnabled(true);
+        }
+    }
+}
+
 template<typename inttype> // show last 1d, 7d, 1m, 3m, 1y
 void MainWindow::showTsRange(QDateTime (QDateTime::*func)(inttype) const, inttype tsRange)
 {
-    tstart
     QDateTime timeNow = QDateTime::currentDateTime();
     QDateTime startTime = (timeNow.*func)(tsRange);
     bool perctgMode = !ui->radioButton->isChecked();
@@ -377,7 +387,6 @@ void MainWindow::showTsRange(QDateTime (QDateTime::*func)(inttype) const, inttyp
         static_cast<QDateTimeAxis*>(chartView.chart()->axes(Qt::Horizontal)[0])->setRange(startTime,timeNow);
         fitYAxis();
     }
-    tend("showTsRange")
 }
 
 QPair<double, double> MainWindow::getTsPlotRange()
@@ -481,13 +490,15 @@ void MainWindow::fitYAxis(QValueAxis* axisY) // vertical zoom on y axis to fit v
             tickInterval = 100;
 
         axisY->setTickInterval(tickInterval);
+        tslap
         axisY->setRange(priceRange.first - abs(0.05 * priceRange.first), priceRange.second + abs(0.05 * priceRange.second));
+        tlap("setyrange")
     }
 
     else{
         axisY->setTickCount(10);
         int nrOfDigits = log10(priceRange.second)+1; // total number of digits is 5, so label like : 12351, 1400.4, 123.25, 13.123 ...
-        axisY->setLabelFormat("%."+QString::number(5-nrOfDigits)+"f");
+        axisY->setLabelFormat("%."+QString::number(5-nrOfDigits)+"f");       
         axisY->setRange(0,priceRange.second+priceRange.second*0.05); // yAxisMax + 5% padding above
     }
     tend("fitYAxis")
@@ -555,7 +566,7 @@ void MainWindow::on_calendarWidget_activated(const QDate &date) // on date click
     if(perctgMode){ // in perc mode(??) zoom both axes accordingly
         tslap
         static_cast<QDateTimeAxis*>(chartView.chart()->axes(Qt::Horizontal)[0])->setRange(QDateTime::fromMSecsSinceEpoch(ts),QDateTime::currentDateTime());
-        tlap("date selected setrange")
+        tlap("setxrange")
 
         fitYAxis();
     }

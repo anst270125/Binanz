@@ -43,6 +43,7 @@ private:
     QNetworkAccessManager *nam;  
     MyChartView chartView;
     QMap<QString,bool> shownPairs;
+    int downloading;
 
     QMap<QString,QMap<double,double>> pairsData;
     QMap<QString,QMap<double,double>> origPairsData;
@@ -58,6 +59,7 @@ private:
     void savePairData(QString pair, double newDataStartTs);
     void adjustCalendarRange();
     void doPairPercentage(QString pairName, double referenceValue);
+    void uiEnableDisable(bool disable);
 
     template<typename inttype>
     void showTsRange(QDateTime(QDateTime::*func)(inttype) const,inttype tsRange);
