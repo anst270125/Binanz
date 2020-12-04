@@ -31,3 +31,8 @@ Edit watchlist.txt to enter your favorite pairs. Upon startup, the app loads the
 
 **Save data**:
 When downloading data for a pair for the first time, the data is stored into the /data folder. Upon subsequent runs of the app, the old data is loaded from the disk, and only the new, missing data is downloaded from binance. This makes the app faster.
+
+## Donations
+Does you crypto balance have too many fractional digits? You can easily get rid of them using the following addresses:
+- BTC: _13SBQhN2BJr5DxcYeEciWqxjN6QLt8XRDu_
+- ETH (ERC20): _0xD2F304a5428234D488F5Ce38DAB3099c43937E0A_
