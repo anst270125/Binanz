@@ -7,10 +7,10 @@
 
 QTextStream out(stdout);
 int ident=-1;
-#define tstart QElapsedTimer timerAll,timerLap; timerAll.start();timerLap.start();++ident;
-#define tlap(X) out<<QString(ident,'~')<<X<<" "<<timerLap.elapsed()<<"\n";timerLap.restart();
-#define tslap timerLap.restart();
-#define tend(X) out<<QString(ident,'-')<<X<<" "<<timerAll.elapsed()<<"\n"<<(ident == 0 ? "\n" : "");out.flush();--ident;
+#define tstart //QElapsedTimer timerAll,timerLap; timerAll.start();timerLap.start();++ident;
+#define tlap(X) //out<<QString(ident,'~')<<X<<" "<<timerLap.elapsed()<<"\n";timerLap.restart();
+#define tslap //timerLap.restart();
+#define tend(X) //out<<QString(ident,'-')<<X<<" "<<timerAll.elapsed()<<"\n"<<(ident == 0 ? "\n" : "");out.flush();--ident;
 
 QMap<QString,double> intervalMSecs  {{"1m",60000},
                                      {"3m",60000*3},
@@ -30,6 +30,7 @@ QMap<QString,double> intervalMSecs  {{"1m",60000},
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
+    , valueLabel(nullptr)
     , nam(new QNetworkAccessManager(this))
     , chartView(this)
     , downloading(0)
@@ -152,6 +153,10 @@ void MainWindow::step3_updateChart(double referenceTs, bool doFitYAxis)
 {
     tstart
     QChart* chart = new QChart;
+    if(valueLabel != nullptr) //delete old one
+        delete valueLabel;
+
+    valueLabel = new QGraphicsTextItem(chart);
 
     QDateTimeAxis *axisX = new QDateTimeAxis;
     axisX->setTickCount(15);
@@ -168,7 +173,9 @@ void MainWindow::step3_updateChart(double referenceTs, bool doFitYAxis)
 
         QSplineSeries* series = new QSplineSeries;
         series->setName(pairName);
-        series->setUseOpenGL(true);
+        series->setUseOpenGL(true); //only if it worked with spline series
+
+        connect(series,&QSplineSeries::hovered, this, &MainWindow::seriesHovered);
 
         for(double ts : pairsData[pairName].keys())
             series->append(ts, pairsData[pairName][ts]);
@@ -176,6 +183,9 @@ void MainWindow::step3_updateChart(double referenceTs, bool doFitYAxis)
         chart->addSeries(series);
         series->attachAxis(axisX);
         series->attachAxis(axisY);
+        QPen pen = series->pen();
+        pen.setWidth(3);
+        series->setPen(pen);
     }
     tslap
 
@@ -637,4 +647,30 @@ void MainWindow::on_pushButton_clicked()
 void MainWindow::on_pushButton_2_clicked()
 {
     QDesktopServices::openUrl(QUrl("https://www.blockchain.com/eth/address/0xD2F304a5428234D488F5Ce38DAB3099c43937E0A"));
+}
+
+void MainWindow::seriesHovered(QPointF point,bool hover)
+{
+    QSplineSeries* series = static_cast<QSplineSeries*>(sender()); // get hovered series
+    QPen pen = series->pen();
+
+    if(hover){
+        QString label;
+        if(!ui->radioButton->isChecked())
+            label = QString::number(point.y(),'f',2)+"%";
+        else
+             label = QString::number(point.y());
+
+        pen.setWidth(5); //highlight
+        valueLabel->setPlainText(QString("X: %1 \nY: %2 ").arg(point.x()).arg(point.y()));
+        valueLabel->setHtml(QString("<div style='background-color: #eeeeff; font-size: 14px;'>") +label+"</div>"); // padding, border not working
+        valueLabel->setPos(this->chartView.chart()->mapToPosition(point) + QPoint(-20, -30)); //convert position to axis value
+        valueLabel->setZValue(10); // raise over series
+        valueLabel->show();
+    }
+    else {
+        pen.setWidth(3); //lowlight
+        valueLabel->hide();
+    }
+    series->setPen(pen);
 }

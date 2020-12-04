@@ -36,17 +36,17 @@ private slots:
     void on_pushButton1m_clicked();
     void on_pushButton7d_clicked();
     void on_pushButton1d_clicked();
-
-
     void on_pushButton_clicked();
-
     void on_pushButton_2_clicked();
+
+    void seriesHovered(QPointF point,bool hover);
 
 private:
     Ui::MainWindow *ui;
+    QGraphicsTextItem *valueLabel;
     QNetworkAccessManager *nam;  
     MyChartView chartView;
-    QMap<QString,bool> shownPairs;
+    QMap<QString,bool> shownPairs;    
     int downloading;
 
     QMap<QString,QMap<double,double>> pairsData;
