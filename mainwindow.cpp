@@ -628,3 +628,13 @@ void MainWindow::on_tableWidget_itemChanged(QTableWidgetItem *item)
     step3_updateChart();
     adjustCalendarRange();
 }
+
+void MainWindow::on_pushButton_clicked()
+{
+    QDesktopServices::openUrl(QUrl("https://www.blockchain.com/btc/address/13SBQhN2BJr5DxcYeEciWqxjN6QLt8XRDu"));
+}
+
+void MainWindow::on_pushButton_2_clicked()
+{
+    QDesktopServices::openUrl(QUrl("https://www.blockchain.com/eth/address/0xD2F304a5428234D488F5Ce38DAB3099c43937E0A"));
+}
