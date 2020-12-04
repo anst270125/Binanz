@@ -25,9 +25,12 @@
      <layout class="QGridLayout" name="gridLayout">
       <item row="1" column="1">
        <widget class="QComboBox" name="pairCombo2">
+        <property name="currentIndex">
+         <number>3</number>
+        </property>
         <item>
          <property name="text">
-          <string>USDT</string>
+          <string>BUSD</string>
          </property>
         </item>
         <item>
@@ -38,6 +41,11 @@
         <item>
          <property name="text">
           <string>ETH</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>USDT</string>
          </property>
         </item>
        </widget>
@@ -79,9 +87,27 @@
         <property name="editable">
          <bool>true</bool>
         </property>
+        <property name="currentIndex">
+         <number>10</number>
+        </property>
         <item>
          <property name="text">
-          <string>ETH</string>
+          <string>AAVE</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>ADA</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>BAND</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>BNB</string>
          </property>
         </item>
         <item>
@@ -91,12 +117,32 @@
         </item>
         <item>
          <property name="text">
-          <string>VET</string>
+          <string>BCH</string>
          </property>
         </item>
         <item>
          <property name="text">
-          <string>ZIL</string>
+          <string>COMP</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>CRV</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>DOT</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>EOS</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>ETH</string>
          </property>
         </item>
         <item>
@@ -106,12 +152,72 @@
         </item>
         <item>
          <property name="text">
-          <string>OMG</string>
+          <string>LINK</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>LTC</string>
          </property>
         </item>
         <item>
          <property name="text">
           <string>NEO</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>OMG</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>SUSHI</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>SWIPE</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>TRX</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>UNI</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>VET</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>XLM</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>XRP</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>YFI</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>YFII</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>ZIL</string>
          </property>
         </item>
        </widget>
