@@ -3,8 +3,8 @@
 
 QTextStream outt(stdout);
 int identt = -1;
-#define tstart QElapsedTimer timer; timer.start();++identt;
-#define tend(X) outt<<QString(identt,'~')<<X<<" "<<timer.elapsed()<<"\n"<<(identt == 0 ? "\n" : "");outt.flush();--identt;
+#define tstart //QElapsedTimer timer; timer.start();++identt;
+#define tend(X) //outt<<QString(identt,'~')<<X<<" "<<timer.elapsed()<<"\n"<<(identt == 0 ? "\n" : "");outt.flush();--identt;
 
 MyChartView::MyChartView(MainWindow *mw): _mw(mw)
 {

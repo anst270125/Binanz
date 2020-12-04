@@ -153,6 +153,7 @@ void MainWindow::step3_updateChart(double referenceTs, bool doFitYAxis)
 {
     tstart
     QChart* chart = new QChart;
+    //chart->setTheme(QChart::ChartThemeDark);
     if(valueLabel != nullptr) //delete old one
         delete valueLabel;
 
@@ -556,7 +557,7 @@ void MainWindow::on_radioButton_toggled(bool checked)
         adjustCalendarRange();
         ui->calendarWidget->setEnabled(true);
         origPairsData = pairsData; // backup original data
-        on_pushButton1m_clicked(); // 1m history default view in perc mode
+        on_pushButton1m_clicked(); // -----> updateChart()   1m history default view in perc mode
     }
     tend("radioButtonToggled")
 }
@@ -635,7 +636,12 @@ void MainWindow::on_tableWidget_itemChanged(QTableWidgetItem *item)
         return;
 
     shownPairs[item->text()] = cellState;
-    step3_updateChart();
+
+    if(!ui->radioButton->isChecked()) //in percmode get in default last month view
+        on_pushButton1m_clicked(); // ---> updateChart
+    else
+        step3_updateChart();
+
     adjustCalendarRange();
 }
 
