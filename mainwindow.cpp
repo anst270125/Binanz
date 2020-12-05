@@ -31,6 +31,7 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
     , valueLabel(nullptr)
+    , watermark(nullptr)
     , nam(new QNetworkAccessManager(this))
     , chartView(this)
     , downloading(0)
@@ -129,7 +130,7 @@ void MainWindow::step2_pairDataReceived(QNetworkReply* reply)
         step3_updateChart();
 
     else // if first chunk of pair data
-       addTableRow(pairName); // ---> step3_updateChart
+        addTableRow(pairName); // ---> step3_updateChart
 
 
     if((items < limit) || newDataStartTs != 0){  // if no data left to download
@@ -141,9 +142,9 @@ void MainWindow::step2_pairDataReceived(QNetworkReply* reply)
             savePairData(pairName,newDataStartTs);
     }
 
-   else // if there should still be data, download it
+    else // if there should still be data, download it
         downloadPairData(pairName,firstTs-1);
-   tend("step2_pairDataReceived " + pairName)
+    tend("step2_pairDataReceived " + pairName)
 
 
 }
@@ -154,10 +155,19 @@ void MainWindow::step3_updateChart(double referenceTs, bool doFitYAxis)
     tstart
     QChart* chart = new QChart;
     //chart->setTheme(QChart::ChartThemeDark);
+    //chart->setBackgroundBrush(QBrush(QColor::fromHsl(200,50,240)));
+    chart->legend()->setFont(QFont("Calibri",12));
+    chart->setMargins(QMargins(5,5,3,5));
+    chart->setBackgroundRoundness(0);
+    chart->layout()->setContentsMargins(0,0,0,0);
+
+
     if(valueLabel != nullptr) //delete old one
         delete valueLabel;
 
     valueLabel = new QGraphicsTextItem(chart);
+
+    addWatermark(chart);
 
     QDateTimeAxis *axisX = new QDateTimeAxis;
     axisX->setTickCount(15);
@@ -190,9 +200,9 @@ void MainWindow::step3_updateChart(double referenceTs, bool doFitYAxis)
     }
     tslap
 
-  //  QPair<double,double> tsRange = getTsPlotRange(); // min(firstTS(data)) , max(lastTS(data))  // can be removes i guess
-  //  axisX->setRange(QDateTime::fromMSecsSinceEpoch(tsRange.first),
-  //                  QDateTime::fromMSecsSinceEpoch(tsRange.second));
+    //  QPair<double,double> tsRange = getTsPlotRange(); // min(firstTS(data)) , max(lastTS(data))  // can be removes i guess
+    //  axisX->setRange(QDateTime::fromMSecsSinceEpoch(tsRange.first),
+    //                  QDateTime::fromMSecsSinceEpoch(tsRange.second));
 
 
     QChart* oldChart = chartView.chart();
@@ -202,7 +212,7 @@ void MainWindow::step3_updateChart(double referenceTs, bool doFitYAxis)
         delete oldChart;
 
     if(doFitYAxis)
-            fitYAxis(axisY);
+        fitYAxis(axisY);
 
     //chart->setAnimationOptions(QChart::SeriesAnimations);  // laggy for some reason
 
@@ -246,7 +256,7 @@ void MainWindow::downloadPairData(QString pair, double endTime)
     if(endTime != 0)
         url += "&endTime=" + QString::number(static_cast<qint64>(endTime));
 
-    nam->get(QNetworkRequest(url));  
+    nam->get(QNetworkRequest(url));
     ui->pairEdit->clearFocus();
 }
 
@@ -373,6 +383,19 @@ void MainWindow::uiEnableDisable(bool disable)
             ui->addPairButton->setEnabled(true);
         }
     }
+}
+
+void MainWindow::addWatermark(QChart* chart)
+{
+    if(watermark != nullptr) //delete old one
+        delete watermark;
+
+    QString label = "https://github.com/anst270125/Binanz";
+
+    watermark = new QGraphicsTextItem(chart);
+    watermark->setHtml(QString("<div style='font-size: 15px;   font-weight: bold; color: #ddddff;'>") +label+"</div>"); \
+    watermark->setPos(chartView.width()-340,30);
+    watermark->show();
 }
 
 template<typename inttype> // show last 1d, 7d, 1m, 3m, 1y
@@ -509,7 +532,7 @@ void MainWindow::fitYAxis(QValueAxis* axisY) // vertical zoom on y axis to fit v
     else{
         axisY->setTickCount(10);
         int nrOfDigits = log10(priceRange.second)+1; // total number of digits is 5, so label like : 12351, 1400.4, 123.25, 13.123 ...
-        axisY->setLabelFormat("%."+QString::number(5-nrOfDigits)+"f");       
+        axisY->setLabelFormat("%."+QString::number(5-nrOfDigits)+"f");
         axisY->setRange(0,priceRange.second+priceRange.second*0.05); // yAxisMax + 5% padding above
     }
     tend("fitYAxis")
@@ -578,7 +601,6 @@ void MainWindow::on_calendarWidget_activated(const QDate &date) // on date click
         tslap
         static_cast<QDateTimeAxis*>(chartView.chart()->axes(Qt::Horizontal)[0])->setRange(QDateTime::fromMSecsSinceEpoch(ts),QDateTime::currentDateTime());
         tlap("setxrange")
-
         fitYAxis();
     }
     tend("date selected")
@@ -665,10 +687,9 @@ void MainWindow::seriesHovered(QPointF point,bool hover)
         if(!ui->radioButton->isChecked())
             label = QString::number(point.y(),'f',2)+"%";
         else
-             label = QString::number(point.y());
+            label = QString::number(point.y());
 
         pen.setWidth(5); //highlight
-        valueLabel->setPlainText(QString("X: %1 \nY: %2 ").arg(point.x()).arg(point.y()));
         valueLabel->setHtml(QString("<div style='background-color: #eeeeff; font-size: 14px;'>") +label+"</div>"); // padding, border not working
         valueLabel->setPos(this->chartView.chart()->mapToPosition(point) + QPoint(-20, -30)); //convert position to axis value
         valueLabel->setZValue(10); // raise over series
@@ -679,4 +700,16 @@ void MainWindow::seriesHovered(QPointF point,bool hover)
         valueLabel->hide();
     }
     series->setPen(pen);
+}
+
+void MainWindow::on_saveChartButton_clicked()
+{
+    QString fileName = QFileDialog::getSaveFileName(this,tr("Save chart"), "", tr("Images (*.png *.jpg)"),Q_NULLPTR,QFileDialog::HideNameFilterDetails);
+    if (fileName.isEmpty())
+        return;
+
+    QPixmap pmap = chartView.grab();
+    pmap.save(fileName);
+    statusBar()->showMessage("Saving chart...",2000);
+
 }

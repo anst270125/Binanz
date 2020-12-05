@@ -42,6 +42,13 @@ void MyChartView::mouseReleaseEvent(QMouseEvent *event)
     }
 }
 
+void MyChartView::resizeEvent(QResizeEvent *event)
+{
+    if(_mw->watermark != nullptr)
+        _mw->watermark->setPos(this->width()-340,30);
+    QChartView::resizeEvent(event);
+}
+
 bool MyChartView::eventFilter(QObject *watched, QEvent *event)
 {
     //prevent zooming past existing timestamps

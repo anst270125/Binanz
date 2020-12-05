@@ -11,6 +11,7 @@ public:
 
 private:
     void mouseReleaseEvent(QMouseEvent *e) override;
+    void resizeEvent(QResizeEvent *event) override;
     bool eventFilter(QObject *watched, QEvent *event) override;
 
     QRubberBand * rubberBand;

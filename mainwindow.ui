@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>843</width>
+    <width>888</width>
     <height>248</height>
    </rect>
   </property>
@@ -370,108 +370,7 @@
       <property name="verticalSpacing">
        <number>0</number>
       </property>
-      <item row="3" column="4">
-       <widget class="QPushButton" name="pushButton3m">
-        <property name="maximumSize">
-         <size>
-          <width>24</width>
-          <height>16777215</height>
-         </size>
-        </property>
-        <property name="text">
-         <string>3m</string>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="3">
-       <widget class="QPushButton" name="pushButton1m">
-        <property name="maximumSize">
-         <size>
-          <width>24</width>
-          <height>16777215</height>
-         </size>
-        </property>
-        <property name="text">
-         <string>1m</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QRadioButton" name="radioButton">
-        <property name="text">
-         <string>None</string>
-        </property>
-        <property name="checked">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="5">
-       <widget class="QPushButton" name="pushButton1y">
-        <property name="maximumSize">
-         <size>
-          <width>24</width>
-          <height>16777215</height>
-         </size>
-        </property>
-        <property name="text">
-         <string>1y</string>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="0">
-       <widget class="QRadioButton" name="radioButton_2">
-        <property name="text">
-         <string>% change from date</string>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="1">
-       <widget class="QPushButton" name="pushButton1d">
-        <property name="maximumSize">
-         <size>
-          <width>24</width>
-          <height>16777215</height>
-         </size>
-        </property>
-        <property name="text">
-         <string>1d</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="0">
-       <widget class="QLabel" name="label">
-        <property name="font">
-         <font>
-          <pointsize>10</pointsize>
-         </font>
-        </property>
-        <property name="text">
-         <string>Overlay method</string>
-        </property>
-       </widget>
-      </item>
-      <item row="5" column="0" colspan="6">
-       <widget class="QCalendarWidget" name="calendarWidget">
-        <property name="enabled">
-         <bool>false</bool>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="2">
-       <widget class="QPushButton" name="pushButton7d">
-        <property name="maximumSize">
-         <size>
-          <width>24</width>
-          <height>16777215</height>
-         </size>
-        </property>
-        <property name="text">
-         <string>7d</string>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="0">
+      <item row="5" column="0">
        <spacer name="verticalSpacer_3">
         <property name="orientation">
          <enum>Qt::Vertical</enum>
@@ -486,6 +385,114 @@
          </size>
         </property>
        </spacer>
+      </item>
+      <item row="6" column="0" colspan="6">
+       <widget class="QCalendarWidget" name="calendarWidget">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="3">
+       <widget class="QPushButton" name="pushButton1m">
+        <property name="maximumSize">
+         <size>
+          <width>24</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>1m</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="1">
+       <widget class="QPushButton" name="pushButton1d">
+        <property name="maximumSize">
+         <size>
+          <width>24</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>1d</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="0">
+       <widget class="QRadioButton" name="radioButton_2">
+        <property name="text">
+         <string>% change from date</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="4">
+       <widget class="QPushButton" name="pushButton3m">
+        <property name="maximumSize">
+         <size>
+          <width>24</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>3m</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="5">
+       <widget class="QPushButton" name="pushButton1y">
+        <property name="maximumSize">
+         <size>
+          <width>24</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>1y</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="2">
+       <widget class="QPushButton" name="pushButton7d">
+        <property name="maximumSize">
+         <size>
+          <width>24</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>7d</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QRadioButton" name="radioButton">
+        <property name="text">
+         <string>None</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label">
+        <property name="font">
+         <font>
+          <pointsize>10</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string>Overlay method</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="3" rowspan="2" colspan="3">
+       <widget class="QPushButton" name="saveChartButton">
+        <property name="text">
+         <string>Save chart</string>
+        </property>
+       </widget>
       </item>
      </layout>
     </item>

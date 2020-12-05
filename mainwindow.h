@@ -22,6 +22,7 @@ public:
     QPair<double,double> getTsPlotRange();
     QPair<double,double> getPricePlotRange();
     void fitYAxis(QValueAxis *axisY=nullptr);
+    QGraphicsTextItem *watermark;
 
 private slots:
     void on_pairCombo1_currentTextChanged(const QString &arg1);
@@ -40,6 +41,8 @@ private slots:
     void on_pushButton_2_clicked();
 
     void seriesHovered(QPointF point,bool hover);
+
+    void on_saveChartButton_clicked();
 
 private:
     Ui::MainWindow *ui;
@@ -64,6 +67,7 @@ private:
     void adjustCalendarRange();
     void doPairPercentage(QString pairName, double referenceValue);
     void uiEnableDisable(bool disable);
+    void addWatermark(QChart* chart);
 
     template<typename inttype>
     void showTsRange(QDateTime(QDateTime::*func)(inttype) const,inttype tsRange);
